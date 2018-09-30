@@ -98,6 +98,8 @@ var timeInfo = {
 
 //
 var gl;
+var backgroundTexture;
+
 var renderSpec = {
     'width':0,
     'height':0,
@@ -555,9 +557,8 @@ function useEffect(fxobj, srctex) {
     gl.uniform3fv(prog.uniforms.uResolution, renderSpec.array);
     
     if(srctex != null) {
-        gl.uniform2fv(prog.uniforms.uDelta, srctex.dtxArray);
-        gl.uniform1i(prog.uniforms.uSrc, 0);
-        
+        gl.uniform1i(prog.uniforms.sampler0, 0);
+
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, srctex.texture);
     }
@@ -598,15 +599,41 @@ function createEffectLib() {
 
 // background
 function createBackground() {
-    //console.log("create background");
+
 }
+
 function initBackground() {
-    //console.log("init background");
+    backgroundTexture = gl.createTexture();//ugi
+    gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+
+    // Fill the texture with a 1x1 blue pixel.
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
+
+    // Asynchronously load an image
+
+    var image = new Image();
+    image.src = "./back0.jpeg";
+
+    image.addEventListener('load', function() {
+        // Now that the image has loaded make copy it to the texture.
+        gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    });
 }
 function renderBackground() {
     gl.disable(gl.DEPTH_TEST);
-    
-    useEffect(effectLib.sceneBg, null);
+
+    var tex = {};
+
+    tex.texture = backgroundTexture;
+
+    useEffect(effectLib.sceneBg, tex);
     gl.uniform2f(effectLib.sceneBg.program.uniforms.uTimes, timeInfo.elapsed, timeInfo.delta);
     drawEffect(effectLib.sceneBg);
     unuseEffect(effectLib.sceneBg);
@@ -636,11 +663,14 @@ function renderPostProcess() {
     };
     
     //make bright buff
+
+    /*
     bindRT(renderSpec.wHalfRT0, true);
     useEffect(effectLib.mkBrightBuf, renderSpec.mainRT);
     drawEffect(effectLib.mkBrightBuf);
     unuseEffect(effectLib.mkBrightBuf);
-    
+    */
+
     // make bloom
     for(var i = 0; i < 2; i++) {
         var p = 1.5 + 1 * i;
@@ -749,6 +779,31 @@ function toggleAnimation(elm) {
     if(elm) {
         elm.innerHTML = animating? "Stop":"Start";
     }
+}
+
+var clickedCount = 0;
+
+function ChangeBackground(input) {
+    clickedCount++;
+
+    clickedCount = clickedCount % 4;
+
+    var imageSrc = "back" + clickedCount + ".jpeg";
+
+    var image = new Image();
+    image.src = imageSrc;
+
+    image.addEventListener('load', function() {
+        // Now that the image has loaded make copy it to the texture.
+        gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    });
 }
 
 function stepAnimation() {
